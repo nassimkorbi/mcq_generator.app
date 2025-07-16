@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% load quiz_extras %}
+
+{% block title %}Quiz Results - {{ quiz_session.document.title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'document_detail' quiz_session.document.id %}">{{ quiz_session.document.title }}</a></li>
+                <li class="breadcrumb-item active">Quiz Results</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<!-- Score Summary -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-{% if quiz_session.score >= 80 %}success{% elif quiz_session.score >= 60 %}warning{% else %}danger{% endif %} text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-chart-line"></i>
+                    Quiz Results
+                </h4>
+            </div>
+            <div class="card-body text-center">
+                <div class="row">
+                    <div class="col-md-3">
+                        <h2 class="text-{% if quiz_session.score >= 80 %}success{% elif quiz_session.score >= 60 %}warning{% else %}danger{% endif %}">
+                            {{ quiz_session.score|floatformat:1 }}%
+                        </h2>
+                        <p class="text-muted">Final Score</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h2 class="text-info">{{ questions|length }}</h2>
+                        <p class="text-muted">Total Questions</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h2 class="text-success">
+                            {% get_correct_count questions %}
+                        </h2>
+                        <p class="text-muted">Correct Answers</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h2 class="text-danger">
+                            {% get_incorrect_count questions %}
+                        </h2>
+                        <p class="text-muted">Incorrect Answers</p>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    {% if quiz_session.score >= 80 %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-trophy"></i>
+                            Excellent work! You have a strong understanding of the material.
+                        </div>
+                    {% elif quiz_session.score >= 60 %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-thumbs-up"></i>
+                            Good job! Consider reviewing the topics you missed.
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-book"></i>
+                            Keep studying! Review the material and try again.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Question Review -->
+<div class="row">
+    <div class="col-12">
+        <h4 class="mb-3">
+            <i class="fas fa-list-alt"></i>
+            Question Review
+        </h4>
+        
+        {% for question in questions %}
+        <div class="card mb-3 {% if question.is_correct %}correct-answer{% else %}incorrect-answer{% endif %}">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Question {{ forloop.counter }}</h6>
+                    <span class="badge bg-{% if question.is_correct %}success{% else %}danger{% endif %}">
+                        {% if question.is_correct %}
+                            <i class="fas fa-check"></i> Correct
+                        {% else %}
+                            <i class="fas fa-times"></i> Incorrect
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="fw-bold mb-3">{{ question.question_text }}</p>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Options:</h6>
+                        {% for key, value in question.options.items %}
+                        <div class="mb-2 p-2 rounded 
+                            {% if key == question.correct_answer %}bg-success text-white{% elif key == question.user_answer and not question.is_correct %}bg-danger text-white{% else %}bg-light{% endif %}">
+                            <strong>{{ key }})</strong> {{ value }}
+                            {% if key == question.correct_answer %}
+                                <i class="fas fa-check float-end"></i>
+                            {% elif key == question.user_answer and not question.is_correct %}
+                                <i class="fas fa-times float-end"></i>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Your Answer:</h6>
+                        <p class="text-{% if question.is_correct %}success{% else %}danger{% endif %}">
+                            <strong>{{ question.user_answer }})</strong> 
+                            {{ question.options|lookup:question.user_answer }}
+                        </p>
+                        
+                        {% if not question.is_correct %}
+                        <h6>Correct Answer:</h6>
+                        <p class="text-success">
+                            <strong>{{ question.correct_answer }})</strong> 
+                            {{ question.options|lookup:question.correct_answer }}
+                        </p>
+                        {% endif %}
+                        
+                        {% if question.explanation %}
+                        <h6>Explanation:</h6>
+                        <p class="text-muted">{{ question.explanation }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="row mt-4">
+    <div class="col-12 text-center">
+        <a href="{% url 'document_detail' quiz_session.document.id %}" class="btn btn-primary me-2">
+            <i class="fas fa-arrow-left"></i>
+            Back to Document
+        </a>
+        <a href="{% url 'create_quiz' quiz_session.document.id %}" class="btn btn-success me-2">
+            <i class="fas fa-plus"></i>
+            Create New Quiz
+        </a>
+        <a href="{% url 'chatbot' quiz_session.document.id %}" class="btn btn-info">
+            <i class="fas fa-comments"></i>
+            Chat with AI
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Smooth scroll to first incorrect answer
+    const firstIncorrect = document.querySelector('.incorrect-answer');
+    if (firstIncorrect && window.location.hash !== '#top') {
+        setTimeout(() => {
+            firstIncorrect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 500);
+    }
+});
+</script>
+{% endblock %}

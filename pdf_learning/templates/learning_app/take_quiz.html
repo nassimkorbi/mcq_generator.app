@@ -1,0 +1,308 @@
+{% extends 'base.html' %}
+
+{% block title %}Take Quiz - {{ quiz_session.document.title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'document_detail' quiz_session.document.id %}">{{ quiz_session.document.title }}</a></li>
+                <li class="breadcrumb-item active">Take Quiz</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-question-circle"></i>
+                    Quiz: {% if quiz_session.topic %}{{ quiz_session.topic }}{% else %}General{% endif %}
+                </h4>
+                <small>
+                    {{ questions.count }} questions
+                    {% if quiz_session.page_range %} | Pages: {{ quiz_session.page_range }}{% endif %}
+                </small>
+            </div>
+            <div class="card-body">
+                <form method="post" id="quizForm">
+                    {% csrf_token %}
+                    {% for question in questions %}
+                    <div class="question-container mb-4 p-3 border rounded" data-question-id="{{ question.id }}">
+                        <h6 class="fw-bold mb-3">Question {{ forloop.counter }}</h6>
+                        <p class="question-text mb-3">{{ question.question_text }}</p>
+                        
+                        <div class="options-container">
+                            {% for key, value in question.options.items %}
+                            <div class="form-check mb-2">
+                                <input class="form-check-input question-radio" 
+                                       type="radio" 
+                                       name="question_{{ question.id }}" 
+                                       id="q{{ question.id }}_{{ key }}" 
+                                       value="{{ key }}"
+                                       data-question="{{ question.id }}">
+                                <label class="form-check-label quiz-option p-2 rounded w-100 d-block" 
+                                       for="q{{ question.id }}_{{ key }}">
+                                    <strong>{{ key }})</strong> {{ value }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{% url 'document_detail' quiz_session.document.id %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i>
+                            Back
+                        </a>
+                        <button type="submit" class="btn btn-secondary" id="submitBtn" disabled>
+                            <i class="fas fa-check"></i>
+                            Submit Quiz
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card bg-light position-sticky" style="top: 20px;">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="fas fa-info-circle text-info"></i>
+                    Quiz Progress
+                </h6>
+                <div class="progress mb-3">
+                    <div class="progress-bar bg-success" 
+                         role="progressbar" 
+                         style="width: 0%" 
+                         id="progressBar"
+                         aria-valuenow="0" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100">
+                        0%
+                    </div>
+                </div>
+                <p class="small mb-3">
+                    <span id="answeredCount">0</span> of {{ questions.count }} questions answered
+                </p>
+                
+                <hr>
+                
+                <h6 class="card-title">
+                    <i class="fas fa-clock text-warning"></i>
+                    Time Tracker
+                </h6>
+                <p class="small">
+                    Started: <span id="startTime"></span><br>
+                    Elapsed: <span id="elapsedTime">00:00</span>
+                </p>
+                
+                <hr>
+                
+                <div class="text-center">
+                    <small class="text-muted">
+                        <i class="fas fa-lightbulb"></i>
+                        Take your time and read each question carefully
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.quiz-option {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.quiz-option:hover {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+.quiz-option.selected {
+    background-color: #cfe2ff;
+    border-color: #0d6efd;
+    color: #0d6efd;
+}
+
+.question-container {
+    transition: all 0.3s ease;
+}
+
+.question-container.answered {
+    border-color: #198754;
+    background-color: #f8fff9;
+}
+
+.progress-bar {
+    transition: width 0.3s ease;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Quiz configuration
+    const totalQuestions = {{ questions.count }};
+    const startTime = new Date();
+    let timeInterval;
+    
+    // DOM elements
+    const submitBtn = document.getElementById('submitBtn');
+    const progressBar = document.getElementById('progressBar');
+    const answeredCountSpan = document.getElementById('answeredCount');
+    const startTimeSpan = document.getElementById('startTime');
+    const elapsedTimeSpan = document.getElementById('elapsedTime');
+    const quizForm = document.getElementById('quizForm');
+    
+    // Initialize
+    function init() {
+        displayStartTime();
+        startTimeTracking();
+        attachEventListeners();
+        updateProgress();
+    }
+    
+    // Display start time
+    function displayStartTime() {
+        if (startTimeSpan) {
+            startTimeSpan.textContent = startTime.toLocaleTimeString();
+        }
+    }
+    
+    // Start time tracking
+    function startTimeTracking() {
+        timeInterval = setInterval(function() {
+            const now = new Date();
+            const elapsed = Math.floor((now - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            
+            if (elapsedTimeSpan) {
+                elapsedTimeSpan.textContent = 
+                    minutes.toString().padStart(2, '0') + ':' + 
+                    seconds.toString().padStart(2, '0');
+            }
+        }, 1000);
+    }
+    
+    // Attach event listeners
+    function attachEventListeners() {
+        // Radio button change events
+        const radioButtons = document.querySelectorAll('.question-radio');
+        radioButtons.forEach(function(radio) {
+            radio.addEventListener('change', handleRadioChange);
+        });
+        
+        // Form submit event
+        if (quizForm) {
+            quizForm.addEventListener('submit', handleFormSubmit);
+        }
+        
+        // Before unload warning
+        window.addEventListener('beforeunload', handleBeforeUnload);
+    }
+    
+    // Handle radio button changes
+    function handleRadioChange(event) {
+        const radio = event.target;
+        const questionContainer = radio.closest('.question-container');
+        const questionId = radio.getAttribute('data-question');
+        
+        // Update visual selection
+        if (questionContainer) {
+            const allOptions = questionContainer.querySelectorAll('.quiz-option');
+            allOptions.forEach(function(option) {
+                option.classList.remove('selected');
+            });
+            
+            const selectedLabel = questionContainer.querySelector('label[for="' + radio.id + '"]');
+            if (selectedLabel) {
+                selectedLabel.classList.add('selected');
+            }
+            
+            // Mark question as answered
+            questionContainer.classList.add('answered');
+        }
+        
+        // Update progress
+        updateProgress();
+    }
+    
+    // Update progress tracking
+    function updateProgress() {
+        const answeredQuestions = document.querySelectorAll('.question-radio:checked').length;
+        const percentage = Math.round((answeredQuestions / totalQuestions) * 100);
+        
+        // Update progress bar
+        if (progressBar) {
+            progressBar.style.width = percentage + '%';
+            progressBar.textContent = percentage + '%';
+            progressBar.setAttribute('aria-valuenow', percentage);
+        }
+        
+        // Update answered count
+        if (answeredCountSpan) {
+            answeredCountSpan.textContent = answeredQuestions;
+        }
+        
+        // Update submit button
+        if (submitBtn) {
+            if (answeredQuestions > 0) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('btn-secondary');
+                submitBtn.classList.add('btn-success');
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.classList.remove('btn-success');
+                submitBtn.classList.add('btn-secondary');
+            }
+        }
+    }
+    
+    // Handle form submission
+    function handleFormSubmit(event) {
+        // Clear the time interval
+        if (timeInterval) {
+            clearInterval(timeInterval);
+        }
+        
+        // Remove beforeunload warning
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        
+        // Show loading state
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+        }
+        
+        // Form will submit normally
+    }
+    
+    // Handle before unload warning
+    function handleBeforeUnload(event) {
+        const answeredQuestions = document.querySelectorAll('.question-radio:checked').length;
+        if (answeredQuestions > 0 && answeredQuestions < totalQuestions) {
+            event.preventDefault();
+            event.returnValue = 'You have unsaved answers. Are you sure you want to leave?';
+            return event.returnValue;
+        }
+    }
+    
+    // Initialize the quiz
+    init();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+
+{% block title %}Chat - {{ document.title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'document_detail' document.id %}">{{ document.title }}</a></li>
+                <li class="breadcrumb-item active">Chat</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-robot"></i>
+                    AI Assistant - {{ document.title }}
+                </h4>
+                <small>Ask questions about the document content</small>
+            </div>
+            <div class="card-body p-0">
+                <div class="chat-container p-3" id="chatContainer">
+                    {% if messages %}
+                        {% for msg in messages %}
+                        <div class="message user-message">
+                            <div class="message-content">
+                                {{ msg.message }}
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                {{ msg.timestamp|date:"g:i A" }}
+                            </small>
+                        </div>
+                        <div class="message ai-message">
+                            <div class="message-content">
+                                {{ msg.response }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-comments fa-2x mb-2"></i>
+                        <p>Start a conversation! Ask me anything about the document.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-footer">
+                <form id="chatForm" class="d-flex">
+                    <input type="text" class="form-control me-2" id="messageInput" 
+                           placeholder="Ask a question about the document..." required>
+                    <button type="submit" class="btn btn-info" id="sendBtn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="fas fa-lightbulb text-warning"></i>
+                    Sample Questions
+                </h6>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-secondary btn-sm text-start sample-question" 
+                            data-question="What are the main topics covered in this document?">
+                        What are the main topics covered?
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm text-start sample-question" 
+                            data-question="Can you summarize the key points?">
+                        Summarize the key points
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm text-start sample-question" 
+                            data-question="What are the most important concepts I should remember?">
+                        Most important concepts
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm text-start sample-question" 
+                            data-question="Can you explain this topic in simpler terms?">
+                        Explain in simpler terms
+                    </button>
+                </div>
+                
+                <hr>
+                
+                <h6 class="card-title">
+                    <i class="fas fa-info-circle text-info"></i>
+                    Tips
+                </h6>
+                <ul class="small">
+                    <li>Ask specific questions for better answers</li>
+                    <li>Reference page numbers if needed</li>
+                    <li>Ask for explanations or examples</li>
+                    <li>Request summaries of sections</li>
+                </ul>
+                
+                <hr>
+                
+                <div class="text-center">
+                    <a href="{% url 'create_quiz' document.id %}" class="btn btn-success btn-sm">
+                        <i class="fas fa-question-circle"></i>
+                        Create Quiz
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatContainer = document.getElementById('chatContainer');
+    const chatForm = document.getElementById('chatForm');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    
+    // Auto-scroll to bottom
+    function scrollToBottom() {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    
+    // Initial scroll
+    scrollToBottom();
+    
+    // Handle form submission
+    chatForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const message = messageInput.value.trim();
+        if (!message) return;
+        
+        // Disable form
+        messageInput.disabled = true;
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        // Add user message to chat
+        addMessage(message, 'user');
+        messageInput.value = '';
+        
+        try {
+            // Send to API
+            const response = await fetch('{% url "chat_api" document.id %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ message: message })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                addMessage(data.response, 'ai');
+            } else {
+                addMessage('Sorry, I encountered an error. Please try again.', 'ai');
+            }
+        } catch (error) {
+            addMessage('Sorry, I encountered an error. Please try again.', 'ai');
+        }
+        
+        // Re-enable form
+        messageInput.disabled = false;
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+        messageInput.focus();
+    });
+    
+    // Add message to chat
+    function addMessage(text, sender) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}-message`;
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        contentDiv.textContent = text;
+        
+        messageDiv.appendChild(contentDiv);
+        
+        if (sender === 'user') {
+            const timeDiv = document.createElement('small');
+            timeDiv.className = 'text-muted d-block mt-1';
+            timeDiv.textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            messageDiv.appendChild(timeDiv);
+        }
+        
+        chatContainer.appendChild(messageDiv);
+        scrollToBottom();
+    }
+    
+    // Sample question buttons
+    document.querySelectorAll('.sample-question').forEach(button => {
+        button.addEventListener('click', function() {
+            messageInput.value = this.dataset.question;
+            messageInput.focus();
+        });
+    });
+    
+    // Get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
+{% endblock %}

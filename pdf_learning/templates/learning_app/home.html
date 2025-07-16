@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - PDF Learning Assistant{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-book-reader text-primary"></i>
+            PDF Learning Assistant
+        </h1>
+        <p class="lead text-muted">Upload PDF documents and generate interactive quizzes with AI-powered assistance.</p>
+    </div>
+</div>
+
+<!-- Upload Form -->
+<div class="row mb-5">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-upload"></i>
+                    Upload New PDF
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'upload_pdf' %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Document Title</label>
+                        <input type="text" class="form-control" id="title" name="title" placeholder="Enter document title (optional)">
+                    </div>
+                    <div class="mb-3">
+                        <label for="pdf_file" class="form-label">PDF File</label>
+                        <input type="file" class="form-control" id="pdf_file" name="pdf_file" accept=".pdf" required>
+                        <div class="form-text">Maximum file size: 10MB</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-upload"></i>
+                        Upload & Process
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="fas fa-info-circle text-info"></i>
+                    How it works
+                </h6>
+                <ol class="small">
+                    <li>Upload your PDF document</li>
+                    <li>AI processes and indexes the content</li>
+                    <li>Generate custom quizzes by topic or page range</li>
+                    <li>Chat with AI about the document content</li>
+                    <li>Track your learning progress</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Uploaded Documents -->
+{% if documents %}
+<div class="row">
+    <div class="col-12">
+        <h3 class="mb-3">
+            <i class="fas fa-file-pdf text-danger"></i>
+            Your Documents
+        </h3>
+        <div class="row">
+            {% for document in documents %}
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-file-pdf text-danger"></i>
+                            {{ document.title }}
+                        </h6>
+                        <p class="card-text text-muted small">
+                            <i class="fas fa-calendar"></i>
+                            Uploaded: {{ document.uploaded_at|date:"M d, Y" }}
+                            <br>
+                            <i class="fas fa-file-alt"></i>
+                            Pages: {{ document.total_pages|default:"Processing..." }}
+                            <br>
+                            <i class="fas fa-{{ document.processed|yesno:'check-circle,clock' }}"></i>
+                            Status: {{ document.processed|yesno:"Ready,Processing" }}
+                        </p>
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        {% if document.processed %}
+                        <a href="{% url 'document_detail' document.id %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-eye"></i>
+                            View Details
+                        </a>
+                        <a href="{% url 'create_quiz' document.id %}" class="btn btn-success btn-sm">
+                            <i class="fas fa-question-circle"></i>
+                            Create Quiz
+                        </a>
+                        <a href="{% url 'chatbot' document.id %}" class="btn btn-info btn-sm">
+                            <i class="fas fa-comments"></i>
+                            Chat
+                        </a>
+                        {% else %}
+                        <span class="text-muted small">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            Processing...
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="text-center py-5">
+            <i class="fas fa-file-pdf fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">No documents uploaded yet</h4>
+            <p class="text-muted">Upload your first PDF to get started with AI-powered learning!</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

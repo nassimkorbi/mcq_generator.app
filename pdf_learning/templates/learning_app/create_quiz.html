@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Quiz - {{ document.title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'document_detail' document.id %}">{{ document.title }}</a></li>
+                <li class="breadcrumb-item active">Create Quiz</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-question-circle"></i>
+                    Create New Quiz
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="post" id="createQuizForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="topic" class="form-label">Topic/Subject (Optional)</label>
+                        <input type="text" class="form-control" id="topic" name="topic" 
+                               placeholder="e.g., Machine Learning, Chapter 3, Introduction">
+                        <div class="form-text">Specify a topic to focus the questions on specific content</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="page_range" class="form-label">Page Range (Optional)</label>
+                        <input type="text" class="form-control" id="page_range" name="page_range" 
+                               placeholder="e.g., 1-10, 5,7,9, or 1-5,10-15">
+                        <div class="form-text">
+                            Specify pages to focus on. Examples:
+                            <ul class="small mt-1">
+                                <li><code>1-10</code> - Pages 1 through 10</li>
+                                <li><code>5,7,9</code> - Specific pages 5, 7, and 9</li>
+                                <li><code>1-5,10-15</code> - Pages 1-5 and 10-15</li>
+                                <li>Leave empty for entire document</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="num_questions" class="form-label">Number of Questions</label>
+                        <select class="form-select" id="num_questions" name="num_questions">
+                            <option value="5" selected>5 Questions</option>
+                            <option value="10">10 Questions</option>
+                            <option value="15">15 Questions</option>
+                            <option value="20">20 Questions</option>
+                        </select>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'document_detail' document.id %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i>
+                            Cancel
+                        </a>
+                        <button type="submit" class="btn btn-success" id="generateBtn">
+                            <i class="fas fa-magic"></i>
+                            Generate Quiz
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Loading indicator -->
+                <div id="loadingIndicator" class="text-center mt-3" style="display: none;">
+                    <div class="spinner-border text-success" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Generating questions... This may take a moment.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="fas fa-lightbulb text-warning"></i>
+                    Tips for Better Quizzes
+                </h6>
+                <ul class="small">
+                    <li><strong>Topic:</strong> Be specific (e.g., "Photosynthesis" vs "Biology")</li>
+                    <li><strong>Pages:</strong> Focus on key sections for targeted learning</li>
+                    <li><strong>Questions:</strong> Start with 5-10 for quick review</li>
+                    <li><strong>Review:</strong> Take multiple quizzes on different topics</li>
+                </ul>
+                
+                <hr>
+                
+                <h6 class="card-title">
+                    <i class="fas fa-info-circle text-info"></i>
+                    Document Info
+                </h6>
+                <p class="small">
+                    <strong>Title:</strong> {{ document.title }}<br>
+                    <strong>Pages:</strong> {{ document.total_pages }}<br>
+                    <strong>Status:</strong> {{ document.processed|yesno:"Ready,Processing" }}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('createQuizForm');
+    const generateBtn = document.getElementById('generateBtn');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    
+    form.addEventListener('submit', function(e) {
+        // Show loading indicator
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+        loadingIndicator.style.display = 'block';
+        
+        // Allow form to submit normally
+        // The loading state will be cleared when the page redirects
+    });
+});
+</script>
+{% endblock %}

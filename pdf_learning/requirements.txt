@@ -1,0 +1,12 @@
+Django
+PyPDF2
+sentence-transformers
+chromadb
+transformers
+torch
+accelerate
+numpy
+scikit-learn
+python-dotenv
+requests
+ollama
